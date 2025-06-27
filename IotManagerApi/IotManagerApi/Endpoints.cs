@@ -37,5 +37,4 @@ public static class Endpoints
 public record CreateDeviceRequest
 {
     public required string DeviceId { get; init; }
-    public required Twin Twin { get; init; }
 };
