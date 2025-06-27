@@ -1,9 +1,17 @@
+using Microsoft.Azure.Devices;
+using Microsoft.Azure.Devices.Common.Exceptions;
+using Microsoft.Azure.Devices.Shared;
+
+const string hostName = "cmgtestIoTHub2.azure-devices.net";
+const string hubConnectionString = $"HostName={hostName};SharedAccessKeyName=iothubowner;SharedAccessKey=+6Og9v6MwNPazLiM7yqchGQOvl5Zs61tFAIoTCGrceU=";
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton(RegistryManager.CreateFromConnectionString(hubConnectionString));
 
 var app = builder.Build();
 
@@ -16,29 +24,29 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
 
-app.MapGet("/weatherforecast", () =>
+app.MapGet("/devices", async (RegistryManager registry) =>
     {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
+        var twins = await registry.CreateQuery("select * from devices").GetNextAsTwinAsync();
+        var result = twins.Select(t => new
+        {
+            t.DeviceId,
+            t.ModelId,
+            t.ConnectionState,
+            t.Status,
+            t.StatusReason,
+            t.LastActivityTime,
+            t.Capabilities,
+            Tags = t.Tags.ToJson(),
+            Properties = new
+            {
+                Desired = t.Properties.Desired.ToJson(),
+                Reported = t.Properties.Reported.ToJson()
+            }
+        });
+        return Results.Ok(result);
     })
     .WithName("GetWeatherForecast")
     .WithOpenApi();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
