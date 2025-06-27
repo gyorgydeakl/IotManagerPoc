@@ -10,85 +10,56 @@
       </select>
     </div>
   </div>
-
   <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
     <table class="table table-striped">
       <thead>
         <tr>
           <th scope="col">
-            <input type="checkbox"
-                   [checked]="allSelected"
-                   [indeterminate]="someSelected"
-                   (change)="toggleAll($event)">
+            <input type="checkbox" [checked]="allSelected" [indeterminate]="someSelected" (change)="toggleAll($event)">
           </th>
-          <th scope="col">Device ID</th>
-          <th scope="col">Status</th>
-          <th scope="col">Updated At</th>
-          <th scope="col"></th>
+          <th scope="col">Device ID</th><th scope="col">Status</th><th scope="col">Updated At</th><th scope="col"></th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let device of pagedDevices">
-          <td>
-            <input type="checkbox" [(ngModel)]="device.selected">
-          </td>
+          <td><input type="checkbox" [(ngModel)]="device.selected"></td>
           <td>{{device.deviceId}}</td>
           <td>{{device.status}}</td>
           <td>{{device.statusUpdateDate | date:'short'}}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-secondary" (click)="openEditDialog(device)">
-              <i class="bi bi-pencil"></i>
-            </button>
-          </td>
+          <td><button class="btn btn-sm btn-outline-secondary" (click)="openEditDialog(device)"><i class="bi bi-pencil"></i></button></td>
         </tr>
       </tbody>
     </table>
   </div>
-
   <nav aria-label="Page navigation" class="mt-2">
     <ul class="pagination justify-content-center">
       <li class="page-item" [class.disabled]="currentPage===1">
         <a class="page-link" href="#" (click)="prevPage(); $event.preventDefault()">Previous</a>
       </li>
-      <li class="page-item disabled">
-        <span class="page-link">{{currentPage}} / {{totalPages}}</span>
-      </li>
+      <li class="page-item disabled"><span class="page-link">{{currentPage}} / {{totalPages}}</span></li>
       <li class="page-item" [class.disabled]="currentPage===totalPages">
         <a class="page-link" href="#" (click)="nextPage(); $event.preventDefault()">Next</a>
       </li>
     </ul>
   </nav>
-
-  <!-- Modal -->
   <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showModal}" style="background: rgba(0,0,0,0.5);">
-    <div class="modal-dialog">
-      <div class="modal-content">
+    <div class="modal-dialog"><div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">{{isNew ? 'Add Device' : 'Edit Device'}}</h5>
           <button type="button" class="btn-close" (click)="closeModal()"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Device ID</label>
-            <input class="form-control" [(ngModel)]="editingDevice.deviceId">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select class="form-select" [(ngModel)]="editingDevice.status">
-              <option value="Connected">Connected</option>
-              <option value="Disconnected">Disconnected</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" rows="5" [(ngModel)]="editingDevice.notes"></textarea>
-          </div>
+          <div class="mb-3"><label class="form-label">Device ID</label><input class="form-control" [(ngModel)]="editingDevice.deviceId"></div>
+          <div class="mb-3"><label class="form-label">Status</label><select class="form-select" [(ngModel)]="editingDevice.status">
+              <option value="Connected">Connected</option><option value="Disconnected">Disconnected</option>
+            </select></div>
+          <div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" rows="3" [(ngModel)]="editingDevice.notes"></textarea></div>
+          <div class="mb-3"><label class="form-label">Twin JSON</label><textarea class="form-control" rows="5" [(ngModel)]="editingTwinJson"></textarea></div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
           <button class="btn btn-primary" (click)="save()">Save</button>
         </div>
-      </div>
-    </div>
+    </div></div>
   </div>
 </div>
