@@ -24,4 +24,16 @@ export class DeviceService {
   getDevices(): Observable<RawDevice[]> {
     return this.http.get<RawDevice[]>(this.apiUrl);
   }
+
+  createDevice(deviceId: string): Observable<RawDevice> {
+    return this.http.post<RawDevice>(this.apiUrl, { deviceId });
+  }
+
+  updateDeviceTwin(deviceId: string, twin: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${deviceId}/twin`, twin);
+  }
+
+  executeCommand(deviceIds: string[], command: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/executeCommand`, { deviceIds, command });
+  }
 }

@@ -22,20 +22,30 @@ export class DeviceListComponent implements OnInit {
   devices: Device[] = [];
   filteredDevices: Device[] = [];
 
+  // Filters
   statusFilter: '' | 'Connected' | 'Disconnected' = '';
 
+  // Pagination
   pageSize = 5;
   currentPage = 1;
   totalPages = 1;
 
-  showModal = false;
+  // Modals
+  showEditModal = false;
   editingDevice: Device = { deviceId: '', status: 'Disconnected', statusUpdateDate: new Date(), notes: '', selected: false, twin: {} };
   editingTwinJson = '';
   isNew = false;
 
+  showCommandModal = false;
+  commandText = '';
+
   constructor(private deviceService: DeviceService) {}
 
   ngOnInit() {
+    this.loadDevices();
+  }
+
+  loadDevices() {
     this.deviceService.getDevices().subscribe((raw: RawDevice[]) => {
       this.devices = raw.map(d => ({
         deviceId: d.deviceId,
@@ -71,6 +81,7 @@ export class DeviceListComponent implements OnInit {
     if (this.currentPage < this.totalPages) this.currentPage++;
   }
 
+  // Selection
   get allSelected(): boolean {
     return this.pagedDevices.length > 0 && this.pagedDevices.every(d => d.selected);
   }
@@ -86,38 +97,65 @@ export class DeviceListComponent implements OnInit {
     this.isNew = true;
     this.editingDevice = { deviceId: '', status: 'Disconnected', statusUpdateDate: new Date(), notes: '', selected: false, twin: {} };
     this.editingTwinJson = JSON.stringify(this.editingDevice.twin, null, 2);
-    this.showModal = true;
+    this.showEditModal = true;
   }
 
   openEditDialog(device: Device) {
     this.isNew = false;
     this.editingDevice = { ...device };
     this.editingTwinJson = JSON.stringify(this.editingDevice.twin, null, 2);
-    this.showModal = true;
+    this.showEditModal = true;
   }
 
   save() {
-    try {
-      this.editingDevice.twin = JSON.parse(this.editingTwinJson);
-    } catch (e) {
-      alert('Invalid JSON format for twin');
-      return;
-    }
-
-    this.editingDevice.statusUpdateDate = new Date();
     if (this.isNew) {
-      this.devices.push(this.editingDevice);
+      // csak deviceId szükséges létrehozáshoz
+      this.deviceService.createDevice(this.editingDevice.deviceId).subscribe(newRaw => {
+        const newDev: Device = {
+          deviceId: newRaw.deviceId,
+          status: newRaw.connectionState === 1 ? 'Connected' : 'Disconnected',
+          statusUpdateDate: new Date(newRaw.lastActivityTime),
+          notes: '',
+          selected: false,
+          twin: newRaw.twin
+        };
+        this.devices.push(newDev);
+        this.applyFilter();
+        this.showEditModal = false;
+      }, err => alert('Error creating device'));
     } else {
-      const idx = this.devices.findIndex(d => d.deviceId === this.editingDevice.deviceId);
-      if (idx > -1) this.devices[idx] = this.editingDevice;
+      // twin frissítés JSON parse után
+      try {
+        this.editingDevice.twin = JSON.parse(this.editingTwinJson);
+      } catch {
+        alert('Invalid JSON format for twin');
+        return;
+      }
+      this.deviceService.updateDeviceTwin(this.editingDevice.deviceId, this.editingDevice.twin).subscribe(() => {
+        this.editingDevice.statusUpdateDate = new Date();
+        const idx = this.devices.findIndex(d => d.deviceId === this.editingDevice.deviceId);
+        if (idx > -1) this.devices[idx] = { ...this.editingDevice };
+        this.applyFilter();
+        this.showEditModal = false;
+      }, err => alert('Error updating twin'));
     }
-
-    // opcionális backend frissítés
-    // this.deviceService.updateDeviceTwin(this.editingDevice.deviceId, this.editingDevice.twin).subscribe();
-
-    this.showModal = false;
-    this.applyFilter();
   }
 
-  closeModal() { this.showModal = false; }
+  executeCommand() {
+    const selectedIds = this.devices.filter(d => d.selected).map(d => d.deviceId);
+    if (!selectedIds.length) { alert('No devices selected'); return; }
+    if (!this.commandText.trim()) { alert('Enter a command'); return; }
+    this.deviceService.executeCommand(selectedIds, this.commandText).subscribe();
+    this.showCommandModal = false;
+    this.commandText = '';
+  }
+
+  openCommandModal() {
+    this.showCommandModal = true;
+  }
+
+  closeModals() {
+    this.showEditModal = false;
+    this.showCommandModal = false;
+  }
 }
