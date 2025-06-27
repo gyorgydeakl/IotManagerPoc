@@ -1,6 +1,4 @@
 using Microsoft.Azure.Devices;
-using Microsoft.Azure.Devices.Common.Exceptions;
-using Microsoft.Azure.Devices.Shared;
 
 const string hostName = "cmgtestIoTHub2.azure-devices.net";
 const string hubConnectionString = $"HostName={hostName};SharedAccessKeyName=iothubowner;SharedAccessKey=+6Og9v6MwNPazLiM7yqchGQOvl5Zs61tFAIoTCGrceU=";
@@ -53,11 +51,12 @@ app.MapGet("/devices", async (RegistryManager registry) =>
             {
                 Desired = t.Properties.Desired.ToJson(),
                 Reported = t.Properties.Reported.ToJson()
-            }
+            },
+            Twin = t,
         });
         return Results.Ok(result);
     })
-    .WithName("GetWeatherForecast")
+    .WithName("GetDevices")
     .WithOpenApi();
 
 app.Run();
