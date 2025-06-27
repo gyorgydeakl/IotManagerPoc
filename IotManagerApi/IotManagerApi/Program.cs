@@ -40,7 +40,8 @@ app.MapGet("/devices", async (RegistryManager registry) =>
             {
                 Desired = t.Properties.Desired.ToJson(),
                 Reported = t.Properties.Reported.ToJson()
-            }
+            },
+            Twin = t,
         });
         return Results.Ok(result);
     })
