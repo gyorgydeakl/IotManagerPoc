@@ -1,11 +1,15 @@
+using FastEndpoints;
 using IotManagerApi;
 using Microsoft.Azure.Devices;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<IotHubConfig>(builder.Configuration.GetSection(nameof(IotHubConfig)));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton(RegistryManager.CreateFromConnectionString(builder.Configuration["AzureIotHub:ConnectionString"]));
+builder.Services.AddSingleton((IOptions<IotHubConfig> cfg) => RegistryManager.CreateFromConnectionString(cfg.Value.ConnectionString));
+builder.Services.AddFastEndpoints();
 
 builder.Services.AddCors(options =>
 {
@@ -29,6 +33,6 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAngularDev");
 app.UseHttpsRedirection();
 
-app.RegisterAppEndpoints();
+app.UseFastEndpoints();
 
 app.Run();

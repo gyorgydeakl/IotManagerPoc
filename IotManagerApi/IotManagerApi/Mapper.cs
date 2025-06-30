@@ -1,3 +1,4 @@
+using IotManagerApi.Dto;
 using Microsoft.Azure.Devices;
 using Microsoft.Azure.Devices.Shared;
 

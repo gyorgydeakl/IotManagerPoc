@@ -1,7 +1,7 @@
 using Microsoft.Azure.Devices;
 using Microsoft.Azure.Devices.Shared;
 
-namespace IotManagerApi;
+namespace IotManagerApi.Dto;
 
 public record DeviceDto
 {
