@@ -76,7 +76,9 @@ public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jo
     {
         Post("/batch-jobs/{JobId}/execute");
         AllowAnonymous();
-        Description(x => x.WithName("ExecuteBatchJob"));
+        Description(x => x.WithName("ExecuteBatchJob")
+            .WithSummary("Executes a batch job to update device tags")
+            .WithOpenApi());
     }
 
     public override async Task<IResult> ExecuteAsync(ExecuteBatchJobRequest req, CancellationToken ct)

@@ -1,3 +1,4 @@
+using FastEndpoints;
 using IotManagerApi.Database;
 
 namespace IotManagerApi.Dto;
@@ -21,5 +22,6 @@ public class GetBatchJobRequest
 
 public class ExecuteBatchJobRequest
 {
+    [RouteParam]
     public required Guid JobId { get; init; }
 }
