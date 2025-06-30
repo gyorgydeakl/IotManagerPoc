@@ -14,5 +14,4 @@ public record DeviceDto
     public required DeviceCapabilities Capabilities { get; init; }
     public required string Tags { get; init; }
     public required TwinProperties Properties { get; init; }
-    public required Twin Twin { get; init; }
 }

@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<IotHubConfig>(builder.Configuration.GetSection(nameof(IotHubConfig)));
 builder.Services.Configure<DbConfig>(builder.Configuration.GetSection(nameof(DbConfig)));
 
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton(sp =>

@@ -3,15 +3,15 @@ using IotManagerApi.Config;
 using IotManagerApi.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Azure.Devices;
+using Microsoft.Extensions.Options;
 
 namespace IotManagerApi.Endpoints;
 
-public class CreateDeviceEndpoint(RegistryManager registry, IotHubConfig iotHubConfig)
+public class CreateDeviceEndpoint(RegistryManager registry, IOptions<IotHubConfig> iotHubConfig)
     : Endpoint<CreateDeviceRequest, Created<string>>
 {
     public override void Configure()
     {
-        base.Configure();
         Post("/devices");
         AllowAnonymous();
         Description(x => x
@@ -23,7 +23,7 @@ public class CreateDeviceEndpoint(RegistryManager registry, IotHubConfig iotHubC
     public override async Task<Created<string>> ExecuteAsync(CreateDeviceRequest req, CancellationToken ct)
     {
         var createdDevice = await registry.AddDeviceAsync(new Device(req.DeviceId), ct);
-        var connectionString = $"HostName={iotHubConfig.HostName};DeviceId={createdDevice.Id};SharedAccessKey={createdDevice.Authentication.SymmetricKey.PrimaryKey}";
+        var connectionString = $"HostName={iotHubConfig.Value.HostName};DeviceId={createdDevice.Id};SharedAccessKey={createdDevice.Authentication.SymmetricKey.PrimaryKey}";
         return TypedResults.Created($"/devices/{createdDevice.Id}", connectionString);
     }
 }
@@ -33,8 +33,7 @@ public class ListDevicesEndpoint(RegistryManager registry) : Endpoint<CreateDevi
 {
     public override void Configure()
     {
-        base.Configure();
-        Post("/devices");
+        Get("/devices");
         AllowAnonymous();
         Description(x => x
             .WithName("ListDevices")
@@ -54,7 +53,6 @@ public class GetDeviceByIdEndpoint(RegistryManager registry) : Endpoint<string, 
 {
     public override void Configure()
     {
-        base.Configure();
         Get("/devices/{deviceId}");
         AllowAnonymous();
         Description(x => x

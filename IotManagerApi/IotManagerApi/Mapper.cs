@@ -21,7 +21,7 @@ public static class Mapper
             Capabilities = twin.Capabilities,
             Tags = twin.Tags.ToJson(),
             Properties = twin.Properties,
-            Twin = twin
+            // Twin = twin
         };
     }
 
