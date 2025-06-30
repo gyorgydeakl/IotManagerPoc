@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms'
 import { DeviceService, RawDevice } from '../deviceservice.service';
+import { PickListModule } from 'primeng/picklist';
 
 export interface Device {
   deviceId: string;
@@ -11,10 +12,18 @@ export interface Device {
   selected?: boolean;
   twin: any;
 }
-
+export interface DeviceGroup {
+  name: string;
+}
+type TagOperation = 'create' | 'delete';
+interface Tag {
+  operation: TagOperation;
+  key: string;
+  value?: string;
+}
 @Component({
   selector: 'app-device-list',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, PickListModule],
   templateUrl: './device-list.component.html',
   styleUrl: './device-list.component.css'
 })
@@ -22,15 +31,12 @@ export class DeviceListComponent implements OnInit {
   devices: Device[] = [];
   filteredDevices: Device[] = [];
 
-  // Filters
   statusFilter: '' | 'Connected' | 'Disconnected' = '';
 
-  // Pagination
   pageSize = 5;
   currentPage = 1;
   totalPages = 1;
 
-  // Modals
   showEditModal = false;
   editingDevice: Device = { deviceId: '', status: 'Disconnected', statusUpdateDate: new Date(), notes: '', selected: false, twin: {} };
   editingTwinJson = '';
@@ -38,8 +44,21 @@ export class DeviceListComponent implements OnInit {
 
   showCommandModal = false;
   commandText = '';
+  showGroupModal = false;
+  groupStep = 0;
+  groupName = '';
+  availableDevices: Device[] = [];
+  selectedGroupDevices: Device[] = [];
+  messageInterval = '';
 
-  constructor(private deviceService: DeviceService) {}
+  showLoadModal = false;
+  existingGroups: DeviceGroup[] = [];
+  selectedGroupName = '';
+
+  currentTag: Tag = { operation: 'create', key: '', value: '' };
+  tags: Tag[] = [];
+
+  constructor(private deviceService: DeviceService) { }
 
   ngOnInit() {
     this.loadDevices();
@@ -51,9 +70,7 @@ export class DeviceListComponent implements OnInit {
         deviceId: d.deviceId,
         status: d.connectionState === 1 ? 'Connected' : 'Disconnected',
         statusUpdateDate: new Date(d.lastActivityTime),
-        notes: '',
-        selected: false,
-        twin: d.twin
+        notes: '', selected: false, twin: d.twin
       }));
       this.applyFilter();
     });
@@ -70,16 +87,11 @@ export class DeviceListComponent implements OnInit {
   }
 
   get pagedDevices(): Device[] {
-    const start = (this.currentPage - 1) * this.pageSize;
-    return this.filteredDevices.slice(start, start + this.pageSize);
+    return this.filteredDevices.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
   }
 
-  prevPage() {
-    if (this.currentPage > 1) this.currentPage--;
-  }
-  nextPage() {
-    if (this.currentPage < this.totalPages) this.currentPage++;
-  }
+  prevPage() { if (this.currentPage > 1) this.currentPage--; }
+  nextPage() { if (this.currentPage < this.totalPages) this.currentPage++; }
 
   // Selection
   get allSelected(): boolean {
@@ -109,7 +121,6 @@ export class DeviceListComponent implements OnInit {
 
   save() {
     if (this.isNew) {
-      // csak deviceId szükséges létrehozáshoz
       this.deviceService.createDevice(this.editingDevice.deviceId).subscribe(newRaw => {
         const newDev: Device = {
           deviceId: newRaw.deviceId,
@@ -124,7 +135,6 @@ export class DeviceListComponent implements OnInit {
         this.showEditModal = false;
       }, err => alert('Error creating device'));
     } else {
-      // twin frissítés JSON parse után
       try {
         this.editingDevice.twin = JSON.parse(this.editingTwinJson);
       } catch {
@@ -150,12 +160,58 @@ export class DeviceListComponent implements OnInit {
     this.commandText = '';
   }
 
-  openCommandModal() {
-    this.showCommandModal = true;
-  }
-
   closeModals() {
     this.showEditModal = false;
     this.showCommandModal = false;
+  }
+  openGroupModal() {
+    this.groupStep = 0;
+    this.groupName = '';
+    this.availableDevices = this.devices.filter(d => !d.selected);
+    this.selectedGroupDevices = [];
+    this.showGroupModal = true;
+  }
+  continueGroup(save: boolean) {
+    if (save) {
+      if (!this.groupName.trim()) { alert('Enter group name'); return; }
+    }
+    this.groupStep = 1;
+  }
+  finishGroup() {
+    this.showGroupModal = false;
+    this.groupStep = 0;
+    this.groupName = '';
+    this.selectedGroupDevices = [];
+    this.currentTag = { operation: 'create', key: '', value: '' };
+    this.tags = [];
+  }
+  closeGroupModal() { this.showGroupModal = false; }
+  openLoadModal() {
+    this.showLoadModal = true;
+    this.deviceService.getDeviceGroups().subscribe(groups => {
+      this.existingGroups = groups;
+    });
+  }
+  confirmLoad() {
+    if (!this.selectedGroupName) { alert('Select a group'); return; }
+    this.showLoadModal = false;
+    this.openGroupModal();
+    this.groupName = this.selectedGroupName;
+    // TODO: fetch and set selectedGroupDevices
+  }
+  addTag(): void {
+    const op = this.currentTag.operation;
+    if (!this.currentTag.key || (op === 'create' && !this.currentTag.value)) {
+      return;
+    }
+    this.tags.push({
+      operation: op,
+      key: this.currentTag.key,
+      value: op === 'create' ? this.currentTag.value : undefined
+    });
+    this.currentTag = { operation: 'create', key: '', value: '' };
+  }
+  updateOperation(value: string): void {
+    this.currentTag.operation = value as TagOperation;
   }
 }
