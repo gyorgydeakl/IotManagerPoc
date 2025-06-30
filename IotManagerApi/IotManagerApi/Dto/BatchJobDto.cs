@@ -13,3 +13,8 @@ public class BatchJobDto
     public required DateTime UpdatedAt { get; init; }
     public List<DeviceId> DeviceIds { get; set; } = [];
 }
+
+public class GetBatchJobRequest
+{
+    public required Guid Id { get; init; }
+}

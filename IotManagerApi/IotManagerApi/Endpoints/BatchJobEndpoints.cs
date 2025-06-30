@@ -54,18 +54,18 @@ public class ListBatchJobsEndpoint(IotManagerDbContext dbContext) : Endpoint<Emp
     }
 }
 
-public class GetBatchJobByIdEndpoint(IotManagerDbContext dbContext) : Endpoint<Guid, IResult>
+public class GetBatchJobByIdEndpoint(IotManagerDbContext dbContext) : Endpoint<GetBatchJobRequest, IResult>
 {
     public override void Configure()
     {
-        Get("/batch-jobs/{id}");
+        Get("/batch-jobs/{Id}");
         AllowAnonymous();
         Description(x => x.WithName("GetBatchJobById"));
     }
 
-    public override async Task<IResult> ExecuteAsync(Guid id, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(GetBatchJobRequest req, CancellationToken ct)
     {
-        var batchJob = await dbContext.DeviceGroups.FindAsync([id], ct);
+        var batchJob = await dbContext.DeviceGroups.FindAsync([req.Id], ct);
         return batchJob == null ? Results.NotFound() : Results.Ok(batchJob.ToBatchJobDto());
     }
 }
