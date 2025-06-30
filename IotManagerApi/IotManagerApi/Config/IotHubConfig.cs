@@ -1,4 +1,4 @@
-namespace IotManagerApi;
+namespace IotManagerApi.Config;
 
 public class IotHubConfig
 {

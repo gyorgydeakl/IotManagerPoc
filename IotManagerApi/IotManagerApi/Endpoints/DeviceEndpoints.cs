@@ -1,4 +1,5 @@
 using FastEndpoints;
+using IotManagerApi.Config;
 using IotManagerApi.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Azure.Devices;

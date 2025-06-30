@@ -1,0 +1,13 @@
+namespace IotManagerApi.Database;
+
+public class DeviceGroup
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public required DateTime CreatedAt { get; init; }
+    public required DateTime UpdatedAt { get; init; }
+    public List<DeviceId> DeviceIds { get; set; } = [];
+}
+
+public record DeviceId(string Value);
