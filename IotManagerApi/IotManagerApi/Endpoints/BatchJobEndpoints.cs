@@ -58,30 +58,30 @@ public class GetBatchJobByIdEndpoint(IotManagerDbContext dbContext) : Endpoint<G
 {
     public override void Configure()
     {
-        Get("/batch-jobs/{Id}");
+        Get("/batch-jobs/{JobId}");
         AllowAnonymous();
         Description(x => x.WithName("GetBatchJobById"));
     }
 
     public override async Task<IResult> ExecuteAsync(GetBatchJobRequest req, CancellationToken ct)
     {
-        var batchJob = await dbContext.DeviceGroups.FindAsync([req.Id], ct);
+        var batchJob = await dbContext.DeviceGroups.FindAsync([req.JobId], ct);
         return batchJob == null ? Results.NotFound() : Results.Ok(batchJob.ToBatchJobDto());
     }
 }
 
-public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jobClient, TimeProvider timeProvider) : Endpoint<Guid, IResult>
+public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jobClient, TimeProvider timeProvider) : Endpoint<ExecuteBatchJobRequest, IResult>
 {
     public override void Configure()
     {
-        Post("/batch-jobs/{id}/execute");
+        Post("/batch-jobs/{JobId}/execute");
         AllowAnonymous();
         Description(x => x.WithName("ExecuteBatchJob"));
     }
 
-    public override async Task<IResult> ExecuteAsync(Guid id, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(ExecuteBatchJobRequest req, CancellationToken ct)
     {
-        var batchJob = await dbContext.DeviceGroups.FindAsync([id], ct);
+        var batchJob = await dbContext.DeviceGroups.FindAsync([req.JobId], ct);
         if (batchJob == null)
         {
             return Results.NotFound();
@@ -95,7 +95,7 @@ public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jo
         batchJob.TagsToSet.ForEach(t => twinCollectionPatch[t.Key] = t.Value);
         batchJob.TagsToDelete.ForEach(key => twinCollectionPatch[key.Value] = null);
 
-        var now = timeProvider.GetUtcNow().DateTime;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         await jobClient.ScheduleTwinUpdateAsync(
             jobId: Guid.NewGuid().ToString(),
             queryCondition: "deviceId IN [" + string.Join(",", batchJob.DeviceIds.Select(d => $"'{d.Value}'")) + "]",
@@ -104,7 +104,7 @@ public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jo
                 Tags = twinCollectionPatch,
                 ETag = "*"
             },
-            startTimeUtc: now,
+            startTimeUtc: now.AddSeconds(1),
             maxExecutionTimeInSeconds: TimeSpan.FromMinutes(30).Seconds,
             cancellationToken: ct);
 

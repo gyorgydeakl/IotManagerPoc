@@ -16,5 +16,10 @@ public class BatchJobDto
 
 public class GetBatchJobRequest
 {
-    public required Guid Id { get; init; }
+    public required Guid JobId { get; init; }
+}
+
+public class ExecuteBatchJobRequest
+{
+    public required Guid JobId { get; init; }
 }
