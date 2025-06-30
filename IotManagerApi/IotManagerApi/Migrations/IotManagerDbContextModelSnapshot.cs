@@ -46,7 +46,10 @@ namespace IotManagerApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DeviceGroups");
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("BatchJob", (string)null);
                 });
 
             modelBuilder.Entity("IotManagerApi.Database.BatchJob", b =>

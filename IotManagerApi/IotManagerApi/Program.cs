@@ -17,11 +17,15 @@ builder.Services.AddSingleton(sp =>
     var iotHubConfig = sp.GetRequiredService<IOptions<IotHubConfig>>();
     return RegistryManager.CreateFromConnectionString(iotHubConfig.Value.ConnectionString);
 });
+builder.Services.AddSingleton(sp =>
+{
+    var iotHubConfig = sp.GetRequiredService<IOptions<IotHubConfig>>();
+    return JobClient.CreateFromConnectionString(iotHubConfig.Value.ConnectionString);
+});
 builder.Services.AddFastEndpoints();
 builder.Services.AddDbContext<IotManagerDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetSection(nameof(DbConfig)).Get<DbConfig>()!.ConnectionString;
-    Console.WriteLine("Using connection string: " + connectionString);
     options.UseSqlServer(connectionString);
 });
 builder.Services.AddCors(options =>

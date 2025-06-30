@@ -9,8 +9,10 @@ public class IotManagerDbContext(DbContextOptions<IotManagerDbContext> options) 
         base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<BatchJob>(entity =>
         {
+            entity.ToTable(nameof(BatchJob));
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
