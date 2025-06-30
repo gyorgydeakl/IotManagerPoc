@@ -8,5 +8,5 @@ public class CreateBatchJobRequest
     public required string Description { get; init; }
     public required List<TagKeyValuePair> TagsToSet { get; init; }
     public required List<TagKey> TagsToDelete { get; init; }
-    public required List<DeviceId> DeviceIds { get; init; } = [];
+    public required List<string> DeviceIds { get; init; } = [];
 }

@@ -28,7 +28,7 @@ public class CreateBatchJobEndpoint(IotManagerDbContext dbContext, TimeProvider 
             TagsToDelete = req.TagsToDelete,
             CreatedAt = now,
             UpdatedAt = now,
-            DeviceIds = req.DeviceIds,
+            DeviceIds = req.DeviceIds.Select(id => new DeviceId(id)).ToList(),
         };
 
         dbContext.DeviceGroups.Add(batchJob);
