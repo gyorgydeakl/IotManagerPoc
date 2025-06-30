@@ -22,7 +22,7 @@ namespace IotManagerApi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("IotManagerApi.Database.DeviceGroup", b =>
+            modelBuilder.Entity("IotManagerApi.Database.BatchJob", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -49,11 +49,11 @@ namespace IotManagerApi.Migrations
                     b.ToTable("DeviceGroups");
                 });
 
-            modelBuilder.Entity("IotManagerApi.Database.DeviceGroup", b =>
+            modelBuilder.Entity("IotManagerApi.Database.BatchJob", b =>
                 {
                     b.OwnsMany("IotManagerApi.Database.DeviceId", "DeviceIds", b1 =>
                         {
-                            b1.Property<Guid>("DeviceGroupId")
+                            b1.Property<Guid>("BatchJobId")
                                 .HasColumnType("uniqueidentifier");
 
                             b1.Property<int>("Id")
@@ -66,15 +66,72 @@ namespace IotManagerApi.Migrations
                                 .IsRequired()
                                 .HasColumnType("nvarchar(max)");
 
-                            b1.HasKey("DeviceGroupId", "Id");
+                            b1.HasKey("BatchJobId", "Id");
 
                             b1.ToTable("DeviceId");
 
                             b1.WithOwner()
-                                .HasForeignKey("DeviceGroupId");
+                                .HasForeignKey("BatchJobId");
+                        });
+
+                    b.OwnsMany("IotManagerApi.Database.TagKey", "TagsToDelete", b1 =>
+                        {
+                            b1.Property<Guid>("BatchJobId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)");
+
+                            b1.HasKey("BatchJobId", "Id");
+
+                            b1.ToTable("TagKey");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BatchJobId");
+                        });
+
+                    b.OwnsMany("IotManagerApi.Database.TagKeyValuePair", "TagsToSet", b1 =>
+                        {
+                            b1.Property<Guid>("BatchJobId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<string>("Key")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)");
+
+                            b1.HasKey("BatchJobId", "Id");
+
+                            b1.ToTable("TagKeyValuePair");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BatchJobId");
                         });
 
                     b.Navigation("DeviceIds");
+
+                    b.Navigation("TagsToDelete");
+
+                    b.Navigation("TagsToSet");
                 });
 #pragma warning restore 612, 618
         }
