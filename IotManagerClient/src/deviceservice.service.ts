@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { DeviceGroup } from './device-list/device-list.component';
 
 export interface RawDevice {
   deviceId: string;
@@ -35,5 +36,9 @@ export class DeviceService {
 
   executeCommand(deviceIds: string[], command: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/executeCommand`, { deviceIds, command });
+  }
+
+  getDeviceGroups(): Observable<DeviceGroup[]> {
+    return this.http.get<DeviceGroup[]>(this.apiUrl);
   }
 }
