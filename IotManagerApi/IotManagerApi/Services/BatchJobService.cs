@@ -9,22 +9,37 @@ public class BatchJobService(JobClient jobClient, TimeProvider timeProvider)
 {
     public async Task<JobResponse> ExecuteBatchJobAsync(ExecuteSingleTimeBatchJobRequest req, CancellationToken ct)
     {
-        var twinCollectionPatch = new TwinCollection();
-        req.TagsToSet.ForEach(t => twinCollectionPatch[t.Key] = t.Value);
-        req.TagsToDelete.ForEach(key => twinCollectionPatch[key] = null);
+        var tagsPatch = new TwinCollection();
+        req.TagsToSet.ForEach(t => tagsPatch[t.Key] = t.Value);
+        req.TagsToDelete.ForEach(key => tagsPatch[key] = null);
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var desiredPropertiesPatch = new TwinCollection();
+        req.PropertiesToSet.ForEach(p => desiredPropertiesPatch[p.Key] = p.Value);
+        req.PropertiesToDelete.ForEach(p => desiredPropertiesPatch[p] = null);
+
+        var reportedPropertiesPatch = new TwinCollection();
+        req.PropertiesToDelete.ForEach(p => reportedPropertiesPatch[p] = null);
+
+        var jobId = Guid.NewGuid().ToString();
+        var query = $"deviceId IN ['{string.Join("','", req.DeviceIds)}']";
+        var start  = timeProvider.GetUtcNow().UtcDateTime.AddSeconds(1);
+        var maxSec = (int)TimeSpan.FromMinutes(30).TotalSeconds;
+
         return await jobClient.ScheduleTwinUpdateAsync(
-            jobId: Guid.NewGuid().ToString(),
-            queryCondition: "deviceId IN [" + string.Join(",", req.DeviceIds.Select(id => $"'{id}'")) + "]",
+            jobId:jobId,
+            queryCondition: query,
             twin: new Twin("*")
             {
-                Tags = twinCollectionPatch,
+                Tags = tagsPatch,
+                Properties = new TwinProperties()
+                {
+                    Desired = desiredPropertiesPatch,
+                    Reported = reportedPropertiesPatch,
+                },
                 ETag = "*"
             },
-            startTimeUtc: now.AddSeconds(1),
-            maxExecutionTimeInSeconds: TimeSpan.FromMinutes(30).Seconds,
+            startTimeUtc: start,
+            maxExecutionTimeInSeconds: maxSec,
             cancellationToken: ct);
-
     }
 }

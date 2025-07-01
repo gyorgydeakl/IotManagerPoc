@@ -1,3 +1,5 @@
+using Newtonsoft.Json.Linq;
+
 namespace IotManagerApi.Database;
 
 public class BatchJob
@@ -15,3 +17,5 @@ public class BatchJob
 public record DeviceId(string Value);
 public record TagKeyValuePair(string Key, string Value);
 public record TagKey(string Value);
+public record PropertyKeyValuePair(string Key, JObject Value);
+public record PropertyKey(string Value);
