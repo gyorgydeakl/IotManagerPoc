@@ -1,6 +1,7 @@
 using FastEndpoints;
 using IotManagerApi.Database;
 using IotManagerApi.Dto;
+using IotManagerApi.Services;
 using Microsoft.Azure.Devices;
 using Microsoft.Azure.Devices.Shared;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,9 @@ public class CreateBatchJobEndpoint(IotManagerDbContext dbContext, TimeProvider 
     {
         Post("/batch-jobs");
         AllowAnonymous();
-        Description(x => x.WithName("CreateBatchJob"));
+        Description(x => x.WithName("CreateBatchJob")
+            .WithSummary("Creates a new batch job")
+            .WithOpenApi());
     }
 
     public override async Task<BatchJobDto> ExecuteAsync(CreateBatchJobRequest req, CancellationToken ct)
@@ -44,7 +47,9 @@ public class ListBatchJobsEndpoint(IotManagerDbContext dbContext) : Endpoint<Emp
     {
         Get("/batch-jobs");
         AllowAnonymous();
-        Description(x => x.WithName("ListBatchJobs"));
+        Description(x => x.WithName("ListBatchJobs")
+            .WithSummary("Retrieves a list of all batch jobs")
+            .WithOpenApi());
     }
 
     public override async Task<IEnumerable<BatchJobDto>> ExecuteAsync(EmptyRequest req, CancellationToken ct)
@@ -60,7 +65,9 @@ public class GetBatchJobByIdEndpoint(IotManagerDbContext dbContext) : Endpoint<G
     {
         Get("/batch-jobs/{JobId}");
         AllowAnonymous();
-        Description(x => x.WithName("GetBatchJobById"));
+        Description(x => x.WithName("GetBatchJobById")
+            .WithSummary("Retrieves a batch job by its ID")
+            .WithOpenApi());
     }
 
     public override async Task<IResult> ExecuteAsync(GetBatchJobRequest req, CancellationToken ct)
@@ -70,7 +77,7 @@ public class GetBatchJobByIdEndpoint(IotManagerDbContext dbContext) : Endpoint<G
     }
 }
 
-public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jobClient, TimeProvider timeProvider) : Endpoint<ExecuteBatchJobRequest, IResult>
+public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, BatchJobService batchJobService, TimeProvider timeProvider) : Endpoint<ExecuteBatchJobRequest, IResult>
 {
     public override void Configure()
     {
@@ -93,27 +100,36 @@ public class ExecuteBatchJobEndpoint(IotManagerDbContext dbContext, JobClient jo
             return Results.BadRequest("No devices specified for the batch job.");
         }
 
-        var twinCollectionPatch = new TwinCollection();
-        batchJob.TagsToSet.ForEach(t => twinCollectionPatch[t.Key] = t.Value);
-        batchJob.TagsToDelete.ForEach(key => twinCollectionPatch[key.Value] = null);
+        var jobResponse = await batchJobService.ExecuteBatchJobAsync(batchJob.ToSingleTimeExecute(), ct);
+        if (jobResponse.Status == JobStatus.Failed)
+        {
+            return Results.Problem("Job execution failed. See the error details in the response body.", jobResponse.FailureReason, statusCode: 400);
+        }
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        await jobClient.ScheduleTwinUpdateAsync(
-            jobId: Guid.NewGuid().ToString(),
-            queryCondition: "deviceId IN [" + string.Join(",", batchJob.DeviceIds.Select(d => $"'{d.Value}'")) + "]",
-            twin: new Twin("*")
-            {
-                Tags = twinCollectionPatch,
-                ETag = "*"
-            },
-            startTimeUtc: now.AddSeconds(1),
-            maxExecutionTimeInSeconds: TimeSpan.FromMinutes(30).Seconds,
-            cancellationToken: ct);
-
-        batchJob.UpdatedAt = now;
+        batchJob.UpdatedAt = timeProvider.GetUtcNow().DateTime;
         dbContext.DeviceGroups.Update(batchJob);
 
         await dbContext.SaveChangesAsync(ct);
         return Results.Ok(batchJob.ToBatchJobDto());
+    }
+}
+
+public class ExecuteSingleTimeBatchJobEndpoint(BatchJobService batchJobService) : Endpoint<ExecuteSingleTimeBatchJobRequest, IResult>
+{
+    public override void Configure()
+    {
+        Post("/batch-jobs/single-time/execute");
+        AllowAnonymous();
+        Description(x => x.WithName("ExecuteSingleTimeBatchJob")
+            .WithSummary("Executes a single-time batch job to update device tags")
+            .WithOpenApi());
+    }
+
+    public override async Task<IResult> ExecuteAsync(ExecuteSingleTimeBatchJobRequest req, CancellationToken ct)
+    {
+        var jobResponse = await batchJobService.ExecuteBatchJobAsync(req, ct);
+        return jobResponse.Status == JobStatus.Failed ?
+            Results.Problem("Job execution failed. See the error details in the response body.", jobResponse.FailureReason, statusCode: 400) :
+            Results.Ok();
     }
 }

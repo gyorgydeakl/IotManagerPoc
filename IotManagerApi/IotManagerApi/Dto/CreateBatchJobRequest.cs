@@ -2,7 +2,7 @@ using IotManagerApi.Database;
 
 namespace IotManagerApi.Dto;
 
-public class CreateBatchJobRequest
+public record CreateBatchJobRequest
 {
     public required string Name { get; init; }
     public required string Description { get; init; }

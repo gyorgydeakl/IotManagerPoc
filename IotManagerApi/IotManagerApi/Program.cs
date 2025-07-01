@@ -2,6 +2,7 @@ using FastEndpoints;
 using IotManagerApi;
 using IotManagerApi.Config;
 using IotManagerApi.Database;
+using IotManagerApi.Services;
 using Microsoft.Azure.Devices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ builder.Services.AddSingleton(sp =>
     var iotHubConfig = sp.GetRequiredService<IOptions<IotHubConfig>>();
     return JobClient.CreateFromConnectionString(iotHubConfig.Value.ConnectionString);
 });
+builder.Services.AddSingleton<BatchJobService>();
 builder.Services.AddFastEndpoints();
 builder.Services.AddDbContext<IotManagerDbContext>(options =>
 {

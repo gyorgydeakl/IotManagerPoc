@@ -21,7 +21,6 @@ public static class Mapper
             Capabilities = twin.Capabilities,
             Tags = twin.Tags.ToJson(),
             Properties = twin.Properties,
-            // Twin = twin
         };
     }
 
@@ -48,6 +47,16 @@ public static class Mapper
             CreatedAt = batchJob.CreatedAt,
             UpdatedAt = batchJob.UpdatedAt,
             DeviceIds = batchJob.DeviceIds
+        };
+    }
+
+    public static ExecuteSingleTimeBatchJobRequest ToSingleTimeExecute(this BatchJob batchJob)
+    {
+        return new ExecuteSingleTimeBatchJobRequest()
+        {
+            TagsToSet = batchJob.TagsToSet,
+            TagsToDelete = batchJob.TagsToDelete.Select(tag => tag.Value).ToList(),
+            DeviceIds = batchJob.DeviceIds.Select(id => id.Value).ToList(),
         };
     }
 }

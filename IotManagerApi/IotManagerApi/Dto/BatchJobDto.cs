@@ -3,7 +3,7 @@ using IotManagerApi.Database;
 
 namespace IotManagerApi.Dto;
 
-public class BatchJobDto
+public record BatchJobDto
 {
     public required Guid Id { get; init; }
     public required string Name { get; init; }
@@ -15,12 +15,12 @@ public class BatchJobDto
     public List<DeviceId> DeviceIds { get; set; } = [];
 }
 
-public class GetBatchJobRequest
+public record GetBatchJobRequest
 {
     public required Guid JobId { get; init; }
 }
 
-public class ExecuteBatchJobRequest
+public record ExecuteBatchJobRequest
 {
     [RouteParam]
     public required Guid JobId { get; init; }
