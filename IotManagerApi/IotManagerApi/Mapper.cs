@@ -44,6 +44,8 @@ public static class Mapper
             Description = batchJob.Description,
             TagsToSet = batchJob.TagsToSet,
             TagsToDelete = batchJob.TagsToDelete,
+            PropertiesToSet = batchJob.PropertiesToSet,
+            PropertiesToDelete = batchJob.PropertiesToDelete,
             CreatedAt = batchJob.CreatedAt,
             UpdatedAt = batchJob.UpdatedAt,
             DeviceIds = batchJob.DeviceIds
@@ -56,6 +58,8 @@ public static class Mapper
         {
             TagsToSet = batchJob.TagsToSet,
             TagsToDelete = batchJob.TagsToDelete.Select(tag => tag.Value).ToList(),
+            PropertiesToSet = batchJob.PropertiesToSet,
+            PropertiesToDelete = batchJob.PropertiesToDelete.Select(p => p.Value).ToList(),
             DeviceIds = batchJob.DeviceIds.Select(id => id.Value).ToList(),
         };
     }

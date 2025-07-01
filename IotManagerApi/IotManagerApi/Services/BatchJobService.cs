@@ -14,7 +14,11 @@ public class BatchJobService(JobClient jobClient, TimeProvider timeProvider)
         req.TagsToDelete.ForEach(key => tagsPatch[key] = null);
 
         var desiredPropertiesPatch = new TwinCollection();
-        req.PropertiesToSet.ForEach(p => desiredPropertiesPatch[p.Key] = p.Value);
+        req.PropertiesToSet.ForEach(p =>
+        {
+            var nested = new TwinCollection(p.Value.ToJsonString());
+            desiredPropertiesPatch[p.Key] = nested;
+        });
         req.PropertiesToDelete.ForEach(p => desiredPropertiesPatch[p] = null);
 
         var reportedPropertiesPatch = new TwinCollection();

@@ -77,6 +77,56 @@ namespace IotManagerApi.Migrations
                                 .HasForeignKey("BatchJobId");
                         });
 
+                    b.OwnsMany("IotManagerApi.Database.PropertyKey", "PropertiesToDelete", b1 =>
+                        {
+                            b1.Property<Guid>("BatchJobId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.HasKey("BatchJobId", "Id");
+
+                            b1.ToTable("PropertyKey");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BatchJobId");
+                        });
+
+                    b.OwnsMany("IotManagerApi.Database.PropertyKeyValuePair", "PropertiesToSet", b1 =>
+                        {
+                            b1.Property<Guid>("BatchJobId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
+
+                            b1.Property<string>("Key")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.HasKey("BatchJobId", "Id");
+
+                            b1.ToTable("PropertyKeyValuePair");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BatchJobId");
+                        });
+
                     b.OwnsMany("IotManagerApi.Database.TagKey", "TagsToDelete", b1 =>
                         {
                             b1.Property<Guid>("BatchJobId")
@@ -131,6 +181,10 @@ namespace IotManagerApi.Migrations
                         });
 
                     b.Navigation("DeviceIds");
+
+                    b.Navigation("PropertiesToDelete");
+
+                    b.Navigation("PropertiesToSet");
 
                     b.Navigation("TagsToDelete");
 
