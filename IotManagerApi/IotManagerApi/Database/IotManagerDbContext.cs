@@ -1,4 +1,7 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace IotManagerApi.Database;
 
@@ -7,6 +10,10 @@ public class IotManagerDbContext(DbContextOptions<IotManagerDbContext> options) 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        var jsonNodeConverter = new ValueConverter<JsonNode,string>(
+            n => n.ToJsonString(null),
+            s => JsonNode.Parse(s, null,  default)!);
+
         modelBuilder.Entity<BatchJob>(entity =>
         {
             entity.ToTable(nameof(BatchJob));
@@ -28,6 +35,18 @@ public class IotManagerDbContext(DbContextOptions<IotManagerDbContext> options) 
             entity.OwnsMany(e => e.TagsToDelete, tag =>
             {
                 tag.Property(t => t.Value).IsRequired().HasMaxLength(100);
+            });
+            entity.OwnsMany(e => e.PropertiesToSet, nb =>
+            {
+                nb.Property(p => p.Key).IsRequired();
+                nb.Property(p => p.Value)
+                    .IsRequired()
+                    .HasColumnType("nvarchar(max)")
+                    .HasConversion(jsonNodeConverter);
+            });
+            entity.OwnsMany(e => e.PropertiesToDelete, p =>
+            {
+                p.Property(d => d.Value).IsRequired();
             });
         });
     }

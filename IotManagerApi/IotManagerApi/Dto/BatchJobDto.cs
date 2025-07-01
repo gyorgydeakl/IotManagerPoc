@@ -10,6 +10,8 @@ public record BatchJobDto
     public required string Description { get; init; }
     public required List<TagKeyValuePair> TagsToSet { get; init; }
     public required List<TagKey> TagsToDelete { get; init; }
+    public required List<PropertyKeyValuePair> PropertiesToSet { get; init; }
+    public required List<PropertyKey> PropertiesToDelete { get; init; }
     public required DateTime CreatedAt { get; init; }
     public required DateTime UpdatedAt { get; init; }
     public List<DeviceId> DeviceIds { get; set; } = [];
