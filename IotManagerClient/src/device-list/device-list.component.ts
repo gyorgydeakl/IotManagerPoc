@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms'
-import { DeviceService, RawDevice } from '../deviceservice.service';
+import { BatchJobDto, DeviceService, RawDevice } from '../deviceservice.service';
 import { PickListModule } from 'primeng/picklist';
 
 export interface Device {
@@ -52,8 +52,8 @@ export class DeviceListComponent implements OnInit {
   messageInterval = '';
 
   showLoadModal = false;
-  existingGroups: DeviceGroup[] = [];
-  selectedGroupName = '';
+  existingGroups: BatchJobDto[] = [];
+  selectedBatchJobId = '';
 
   currentTag: Tag = { operation: 'create', key: '', value: '' };
   tags: Tag[] = [];
@@ -141,13 +141,6 @@ export class DeviceListComponent implements OnInit {
         alert('Invalid JSON format for twin');
         return;
       }
-      this.deviceService.updateDeviceTwin(this.editingDevice.deviceId, this.editingDevice.twin).subscribe(() => {
-        this.editingDevice.statusUpdateDate = new Date();
-        const idx = this.devices.findIndex(d => d.deviceId === this.editingDevice.deviceId);
-        if (idx > -1) this.devices[idx] = { ...this.editingDevice };
-        this.applyFilter();
-        this.showEditModal = false;
-      }, err => alert('Error updating twin'));
     }
   }
 
@@ -155,7 +148,6 @@ export class DeviceListComponent implements OnInit {
     const selectedIds = this.devices.filter(d => d.selected).map(d => d.deviceId);
     if (!selectedIds.length) { alert('No devices selected'); return; }
     if (!this.commandText.trim()) { alert('Enter a command'); return; }
-    this.deviceService.executeCommand(selectedIds, this.commandText).subscribe();
     this.showCommandModal = false;
     this.commandText = '';
   }
@@ -171,33 +163,94 @@ export class DeviceListComponent implements OnInit {
     this.selectedGroupDevices = [];
     this.showGroupModal = true;
   }
-  continueGroup(save: boolean) {
-    if (save) {
-      if (!this.groupName.trim()) { alert('Enter group name'); return; }
-    }
+  continueGroup() {
+    if (!this.groupName.trim()) { alert('Enter group name'); return; }
     this.groupStep = 1;
   }
-  finishGroup() {
+  finishGroup(save: boolean): void {
+    // Gather IDs and tags
+    const deviceIds = this.selectedGroupDevices.map(d => d.deviceId);
+    const tagsToSet = this.tags
+      .filter(t => t.operation === 'create')
+      .map(t => ({ key: t.key, value: t.value! }));
+    const tagsToDelete = this.tags
+      .filter(t => t.operation === 'delete')
+      .map(t => t.key);
+
+    if (save) {
+      const createReq = {
+        name: this.groupName,
+        description: '',
+        deviceIds,
+        tagsToSet,
+        tagsToDelete,
+      };
+
+      this.deviceService
+        .createBatchJob(createReq)
+        .subscribe({
+          next: (job) => {
+            this.deviceService
+              .executeBatchJob(job.id)
+              .subscribe({
+                next: () => this.resetGroupModal(),
+                error: (err) => alert('Exec failed: ' + err.message),
+              });
+          },
+          error: (err) => alert('Create job failed: ' + err.message),
+        });
+    } else {
+      const singleReq = { deviceIds, tagsToSet, tagsToDelete };
+      this.deviceService
+        .executeSingleTimeBatchJob(singleReq)
+        .subscribe({
+          next: () => this.resetGroupModal(),
+          error: (err) => alert('Exec failed: ' + err.message),
+        });
+    }
+  }
+
+  private resetGroupModal(): void {
     this.showGroupModal = false;
     this.groupStep = 0;
     this.groupName = '';
     this.selectedGroupDevices = [];
     this.currentTag = { operation: 'create', key: '', value: '' };
     this.tags = [];
+    this.messageInterval = '';
   }
+
   closeGroupModal() { this.showGroupModal = false; }
   openLoadModal() {
+    this.deviceService.getBatchJobsList()
+      .subscribe(jobs => this.existingGroups = jobs);
     this.showLoadModal = true;
-    this.deviceService.getDeviceGroups().subscribe(groups => {
-      this.existingGroups = groups;
-    });
   }
+
   confirmLoad() {
-    if (!this.selectedGroupName) { alert('Select a group'); return; }
+    if (!this.selectedBatchJobId) { alert('Select a group'); return; }
+    const job = this.existingGroups.find(j => j.id === this.selectedBatchJobId)!;
+    // 1) Populate the group name
+    this.groupName = job.name ?? '';
+
+    // 2) Split your devices into “available” vs “selected”
+    const ids = new Set(job.deviceIds || []);
+    this.selectedGroupDevices = this.devices.filter(d => ids.has(d.deviceId));
+    this.availableDevices = this.devices.filter(d => !ids.has(d.deviceId));
+
+    // 3) Rebuild the Tag list
+    this.tags = [];
+    (job.tagsToSet || []).forEach(t =>
+      this.tags.push({ operation: 'create', key: t.key, value: t.value })
+    );
+    (job.tagsToDelete || []).forEach(k =>
+      this.tags.push({ operation: 'delete', key: k })
+    );
+
+    // 4) Close the load modal, show the main group modal on step 0
     this.showLoadModal = false;
-    this.openGroupModal();
-    this.groupName = this.selectedGroupName;
-    // TODO: fetch and set selectedGroupDevices
+    this.showGroupModal = true;
+    this.groupStep = 0;
   }
   addTag(): void {
     const op = this.currentTag.operation;
@@ -213,5 +266,12 @@ export class DeviceListComponent implements OnInit {
   }
   updateOperation(value: string): void {
     this.currentTag.operation = value as TagOperation;
+  }
+  removeTag(index: number): void {
+    this.tags.splice(index, 1);
+  }
+
+  closeWizardModal(){
+    this.resetGroupModal();
   }
 }

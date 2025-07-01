@@ -2,8 +2,8 @@
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <button class="btn btn-primary me-2" (click)="onAddDevice()">Add Device</button>
-                <button class="btn btn-secondary" (click)="openGroupModal()">Create DeviceGroup</button>
+                <button class="btn btn-primary me-2" (click)="onAddDevice()">Add Device Identity</button>
+                <button class="btn btn-secondary" (click)="openGroupModal()">Open BatchJob Wizard</button>
             </div>
             <div>
                 <label for="statusFilter" class="form-label me-2">Status:</label>
@@ -75,16 +75,17 @@
         </div>
         <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showGroupModal}"
             style="background: rgba(0,0,0,0.5);">
-             <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-height:90vh; max-width:90vw;">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+                style="max-height:90vh; max-width:90vw;">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Create Device Group</h5>
-                        <button type="button" class="btn-close" (click)="closeGroupModal()"></button>
+                        <h5 class="modal-title">Set up a batch job and execute it!</h5>
+                        <button type="button" class="btn-close" (click)="closeWizardModal()"></button>
                     </div>
                     <div class="modal-body">
                         <div *ngIf="groupStep===0">
                             <div class="mb-3">
-                                <label class="form-label">Group Name</label>
+                                <label class="form-label">BatchJob Name</label>
                                 <input class="form-control" [(ngModel)]="groupName">
                             </div>
                             <p-pickList [source]="availableDevices" [target]="selectedGroupDevices"
@@ -125,7 +126,7 @@
                                     </button>
                                 </div>
                                 <ul class="list-group mb-3">
-                                    <li *ngFor="let tag of tags"
+                                    <li *ngFor="let tag of tags; let i = index"
                                         class="list-group-item py-1 d-flex justify-content-between align-items-center">
                                         <div>
                                             <strong>{{ tag.operation | titlecase }}</strong> — {{ tag.key }}
@@ -133,6 +134,11 @@
                                                 : {{ tag.value }}
                                             </span>
                                         </div>
+                                        <!-- Remove button -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                            (click)="removeTag(i)" aria-label="Remove tag">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
                                     </li>
                                 </ul>
                             </div>
@@ -141,13 +147,26 @@
                     <div class="modal-footer">
                         <button class="btn btn-outline-secondary me-auto" (click)="openLoadModal()"
                             *ngIf="groupStep===0">Load</button>
-                        <button *ngIf="groupStep===1" class="btn btn-outline-secondary"
-                            (click)="groupStep=0">Back</button>
-                        <button *ngIf="groupStep===0" class="btn btn-outline-secondary"
-                            (click)="continueGroup(false)">Continue without saving</button>
-                        <button *ngIf="groupStep===0" class="btn btn-primary" (click)="continueGroup(true)">Continue
-                            with saving</button>
-                        <button *ngIf="groupStep===1" class="btn btn-primary" (click)="finishGroup()">Finish</button>
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-outline-secondary me-auto"
+                            (click)="groupStep = 0">
+                            Back
+                        </button>
+
+                        <!-- STEP 1: Execute and Save -->
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-primary" (click)="finishGroup(true)">
+                            Execute and Save
+                        </button>
+
+                        <!-- STEP 1: Execute without Saving -->
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-secondary"
+                            (click)="finishGroup(false)">
+                            Execute without Saving
+                        </button>
+
+                        <!-- STEP 0: single Continue button -->
+                        <button *ngIf="groupStep===0" type="button" class="btn btn-primary" (click)="continueGroup()">
+                            Continue
+                        </button>
                     </div>
                 </div>
             </div>
@@ -162,14 +181,18 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Select Group</label>
-                            <select class="form-select" [(ngModel)]="selectedGroupName">
-                                <option *ngFor="let grp of existingGroups" [value]="grp.name">{{grp.name}}</option>
+                            <label class="form-label">Select Batch Job</label>
+                            <select class="form-select" [(ngModel)]="selectedBatchJobId">
+                                <option *ngFor="let job of existingGroups" [value]="job.id">
+                                    {{ job.name || job.id }}
+                                </option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-primary" (click)="confirmLoad()">Load</button>
+                        <button class="btn btn-primary" (click)="confirmLoad()">
+                            Load
+                        </button>
                     </div>
                 </div>
             </div>
