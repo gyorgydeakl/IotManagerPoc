@@ -17,16 +17,38 @@ export interface RawDevice {
 }
 
 export interface TagKeyValuePair {
+  /** nullable per schema */
+  key: string ;
+  value: string ;
+}
+
+export interface PropertyKeyValuePair {
   key: string;
-  value: string;
+  /** JSON tree node – pass whatever object you built in the editor */
+  value: any;
+}
+
+export interface TagKey {
+  /** nullable per schema */
+  value: string ;
+}
+
+export interface PropertyKey {
+  value: string ;
 }
 
 export interface CreateBatchJobRequest {
-  name?: string;
-  description?: string;
-  deviceIds?: string[];
-  tagsToSet?: TagKeyValuePair[];
-  tagsToDelete?: string[];
+  name: string ;
+  description: string ;
+  tagsToSet: TagKeyValuePair[] ;
+  tagsToDelete: string[];
+  propertiesToSet: PropertyKeyValuePair[];
+  propertiesToDelete: string[];
+  deviceIds: string[];
+}
+
+export interface ExecuteBatchJobRequest {
+  jobId: string;
 }
 
 export interface ExecuteSingleTimeBatchJobRequest {
@@ -42,7 +64,8 @@ export interface BatchJobDto {
   deviceIds?: string[];
   tagsToSet?: { key: string; value: string }[];
   tagsToDelete?: string[];
-  // …other props are omitted here…
+  propertiesToSet?: PropertyKeyValuePair[];
+  propertiesToDelete?: PropertyKey[];
 }
 
 

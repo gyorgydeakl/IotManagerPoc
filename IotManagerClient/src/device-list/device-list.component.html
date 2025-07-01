@@ -75,7 +75,7 @@
         </div>
         <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showGroupModal}"
             style="background: rgba(0,0,0,0.5);">
-            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
                 style="max-height:90vh; max-width:90vw;">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -97,51 +97,60 @@
                             </p-pickList>
                         </div>
                         <div *ngIf="groupStep===1" class="row">
-                            <div class="col-6">
-                                <h6>Selected Devices</h6>
-                                <ul class="list-group">
-                                    <li class="list-group-item" *ngFor="let dev of selectedGroupDevices">
-                                        {{dev.deviceId}}</li>
-                                </ul>
-                            </div>
-                            <div class="col-6">
-                                <div class="d-flex align-items-center mb-3">
-
-                                    <select class="form-select form-select-sm me-2" style="width: 150px"
-                                        [ngModel]="currentTag.operation" (ngModelChange)="updateOperation($event)">
-                                        <option value="create">Create Tag</option>
-                                        <option value="delete">Delete Tag</option>
-                                    </select>
-
-                                    <input type="text" class="form-control form-control-sm me-2" placeholder="Key"
-                                        style="width: 150px;" [(ngModel)]="currentTag.key" />
-
-                                    <input *ngIf="currentTag.operation === 'create'" type="text"
-                                        class="form-control form-control-sm me-2" placeholder="Value"
-                                        style="width: 150px;" [(ngModel)]="currentTag.value" />
-
-                                    <button class="btn btn-success btn-sm" (click)="addTag()"
-                                        [disabled]="!currentTag.key || (currentTag.operation === 'create' && !currentTag.value)">
-                                        <i class="bi bi-check-lg"></i>
-                                    </button>
+                            <div class="row gx-3">
+                                <div class="col-4">
+                                    <h6>Selected Devices</h6>
+                                    <ul class="list-group">
+                                        <li class="list-group-item" *ngFor="let dev of selectedGroupDevices">
+                                            {{dev.deviceId}}</li>
+                                    </ul>
                                 </div>
-                                <ul class="list-group mb-3">
-                                    <li *ngFor="let tag of tags; let i = index"
-                                        class="list-group-item py-1 d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>{{ tag.operation | titlecase }}</strong> — {{ tag.key }}
-                                            <span *ngIf="tag.operation === 'create'">
-                                                : {{ tag.value }}
-                                            </span>
-                                        </div>
-                                        <!-- Remove button -->
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                            (click)="removeTag(i)" aria-label="Remove tag">
-                                            <i class="bi bi-x-lg"></i>
+                                <div class="col-4">
+                                    <h6>Tags</h6>
+                                    <div class="d-flex align-items-center mb-2">
+
+                                        <select class="form-select form-select-sm me-2" style="width: 150px"
+                                            [ngModel]="currentTag.operation" (ngModelChange)="updateOperation($event)">
+                                            <option value="create">Create Tag</option>
+                                            <option value="delete">Delete Tag</option>
+                                        </select>
+
+                                        <input type="text" class="form-control form-control-sm me-2" placeholder="Key"
+                                            style="width: 150px;" [(ngModel)]="currentTag.key" />
+
+                                        <input *ngIf="currentTag.operation === 'create'" type="text"
+                                            class="form-control form-control-sm me-2" placeholder="Value"
+                                            style="width: 150px;" [(ngModel)]="currentTag.value" />
+
+                                        <button class="btn btn-success btn-sm" (click)="addTag()"
+                                            [disabled]="!currentTag.key || (currentTag.operation === 'create' && !currentTag.value)">
+                                            <i class="bi bi-plus-lg"></i>
                                         </button>
-                                    </li>
-                                </ul>
+                                    </div>
+                                    <ul class="list-group mb-3">
+                                        <li *ngFor="let tag of tags; let i = index"
+                                            class="list-group-item py-1 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ tag.operation | titlecase }}</strong> — {{ tag.key }}
+                                                <span *ngIf="tag.operation === 'create'">
+                                                    : {{ tag.value }}
+                                                </span>
+                                            </div>
+                                            <!-- Remove button -->
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                (click)="removeTag(i)" aria-label="Remove tag">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-4">
+                                    <h6>Desired properties (JSON)</h6>
+                                    <div #jsonEditorContainer
+                                        style="height: 300px; border: 1px solid #ced4da; border-radius: 4px;"></div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
                     <div class="modal-footer">

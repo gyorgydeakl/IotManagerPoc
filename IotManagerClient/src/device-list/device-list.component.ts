@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms'
 import { BatchJobDto, DeviceService, RawDevice } from '../deviceservice.service';
 import { PickListModule } from 'primeng/picklist';
+import 'jsoneditor/dist/jsoneditor.css';
+import JSONEditor, { JSONEditorOptions } from 'jsoneditor';
 
 export interface Device {
   deviceId: string;
@@ -21,6 +23,7 @@ interface Tag {
   key: string;
   value?: string;
 }
+
 @Component({
   selector: 'app-device-list',
   imports: [FormsModule, CommonModule, PickListModule],
@@ -57,6 +60,11 @@ export class DeviceListComponent implements OnInit {
 
   currentTag: Tag = { operation: 'create', key: '', value: '' };
   tags: Tag[] = [];
+
+  currentPropertiesObj: any = {};
+  private jsonEditor!: JSONEditor;
+  @ViewChild('jsonEditorContainer', { static: false })
+  private jsonEditorContainer!: ElementRef;
 
   constructor(private deviceService: DeviceService) { }
 
@@ -177,6 +185,13 @@ export class DeviceListComponent implements OnInit {
       .filter(t => t.operation === 'delete')
       .map(t => t.key);
 
+    // properties from editor
+    const propsObj = this.jsonEditor ? this.jsonEditor.get() : {};
+    const propertiesToSet = Object.entries(propsObj).map(
+      ([key, value]) => ({ key, value })
+    );
+    const propertiesToDelete: string[] = [];
+
     if (save) {
       const createReq = {
         name: this.groupName,
@@ -184,6 +199,8 @@ export class DeviceListComponent implements OnInit {
         deviceIds,
         tagsToSet,
         tagsToDelete,
+        propertiesToSet,
+        propertiesToDelete
       };
 
       this.deviceService
@@ -218,6 +235,13 @@ export class DeviceListComponent implements OnInit {
     this.currentTag = { operation: 'create', key: '', value: '' };
     this.tags = [];
     this.messageInterval = '';
+    this.currentPropertiesObj = {};
+    if (this.jsonEditor) {
+      this.jsonEditor.destroy();
+      // null it so ngAfterViewChecked can re-init next time
+      // @ts-ignore
+      this.jsonEditor = undefined;
+    }
   }
 
   closeGroupModal() { this.showGroupModal = false; }
@@ -247,6 +271,11 @@ export class DeviceListComponent implements OnInit {
       this.tags.push({ operation: 'delete', key: k })
     );
 
+    this.currentPropertiesObj = {};
+    (job.propertiesToSet || []).forEach(p => {
+      this.currentPropertiesObj[p.key] = p.value;
+    });
+
     // 4) Close the load modal, show the main group modal on step 0
     this.showLoadModal = false;
     this.showGroupModal = true;
@@ -271,7 +300,26 @@ export class DeviceListComponent implements OnInit {
     this.tags.splice(index, 1);
   }
 
-  closeWizardModal(){
+  closeWizardModal() {
     this.resetGroupModal();
+  }
+  ngAfterViewChecked() {
+    // only init once per step-change
+    if (this.groupStep === 1 && this.jsonEditorContainer && !this.jsonEditor) {
+      this.initJsonEditor();
+    }
+  }
+  private initJsonEditor(): void {
+    const options: JSONEditorOptions = {
+      mode: 'tree',
+      modes: ['code', 'tree'],   // allow user to switch
+      mainMenuBar: true
+    };
+    this.jsonEditor = new JSONEditor(
+      this.jsonEditorContainer.nativeElement,
+      options
+    );
+    // seed with any pre-loaded properties (or empty object)
+    this.jsonEditor.set(this.currentPropertiesObj);
   }
 }
