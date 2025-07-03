@@ -1,9 +1,5 @@
 ﻿using Microsoft.Azure.Devices.Client;
-using System;
-using System.Diagnostics;
-using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
-using Newtonsoft.Json;
 
 const string deviceConnectionString = "HostName=cmgtestIoTHub2.azure-devices.net;DeviceId=device01;SharedAccessKey=YI5OZ9kAamztXRtvHU+JJW7LhiCpaCHBytyF3NJLCaE=";
 var sampleRunningTime = TimeSpan.FromHours(8);
