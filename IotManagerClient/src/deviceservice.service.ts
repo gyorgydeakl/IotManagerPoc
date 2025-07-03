@@ -55,6 +55,8 @@ export interface ExecuteSingleTimeBatchJobRequest {
   deviceIds?: string[];
   tagsToSet?: TagKeyValuePair[];
   tagsToDelete?: string[];
+  propertiesToSet?: PropertyKeyValuePair[];
+  propertiesToDelete?: string[];
 }
 
 export interface BatchJobDto {

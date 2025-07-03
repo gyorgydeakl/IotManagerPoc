@@ -185,7 +185,6 @@ export class DeviceListComponent implements OnInit {
       .filter(t => t.operation === 'delete')
       .map(t => t.key);
 
-    // properties from editor
     const propsObj = this.jsonEditor ? this.jsonEditor.get() : {};
     const propertiesToSet = Object.entries(propsObj).map(
       ([key, value]) => ({ key, value })
@@ -217,7 +216,7 @@ export class DeviceListComponent implements OnInit {
           error: (err) => alert('Create job failed: ' + err.message),
         });
     } else {
-      const singleReq = { deviceIds, tagsToSet, tagsToDelete };
+      const singleReq = { deviceIds, tagsToSet, tagsToDelete, propertiesToSet,propertiesToDelete };
       this.deviceService
         .executeSingleTimeBatchJob(singleReq)
         .subscribe({
@@ -238,7 +237,6 @@ export class DeviceListComponent implements OnInit {
     this.currentPropertiesObj = {};
     if (this.jsonEditor) {
       this.jsonEditor.destroy();
-      // null it so ngAfterViewChecked can re-init next time
       // @ts-ignore
       this.jsonEditor = undefined;
     }
@@ -254,15 +252,12 @@ export class DeviceListComponent implements OnInit {
   confirmLoad() {
     if (!this.selectedBatchJobId) { alert('Select a group'); return; }
     const job = this.existingGroups.find(j => j.id === this.selectedBatchJobId)!;
-    // 1) Populate the group name
     this.groupName = job.name ?? '';
 
-    // 2) Split your devices into “available” vs “selected”
     const ids = new Set(job.deviceIds || []);
     this.selectedGroupDevices = this.devices.filter(d => ids.has(d.deviceId));
     this.availableDevices = this.devices.filter(d => !ids.has(d.deviceId));
 
-    // 3) Rebuild the Tag list
     this.tags = [];
     (job.tagsToSet || []).forEach(t =>
       this.tags.push({ operation: 'create', key: t.key, value: t.value })
@@ -276,7 +271,6 @@ export class DeviceListComponent implements OnInit {
       this.currentPropertiesObj[p.key] = p.value;
     });
 
-    // 4) Close the load modal, show the main group modal on step 0
     this.showLoadModal = false;
     this.showGroupModal = true;
     this.groupStep = 0;
@@ -304,22 +298,20 @@ export class DeviceListComponent implements OnInit {
     this.resetGroupModal();
   }
   ngAfterViewChecked() {
-    // only init once per step-change
     if (this.groupStep === 1 && this.jsonEditorContainer && !this.jsonEditor) {
       this.initJsonEditor();
     }
   }
   private initJsonEditor(): void {
     const options: JSONEditorOptions = {
-      mode: 'tree',
-      modes: ['code', 'tree'],   // allow user to switch
+      mode: 'code',
+      modes: ['code', 'tree'],
       mainMenuBar: true
     };
     this.jsonEditor = new JSONEditor(
       this.jsonEditorContainer.nativeElement,
       options
     );
-    // seed with any pre-loaded properties (or empty object)
     this.jsonEditor.set(this.currentPropertiesObj);
   }
 }
