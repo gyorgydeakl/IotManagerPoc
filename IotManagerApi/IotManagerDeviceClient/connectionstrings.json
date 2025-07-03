@@ -1,0 +1,4 @@
+{
+  "device01": "HostName=cmgtestIoTHub2.azure-devices.net;DeviceId=device01;SharedAccessKey=YI5OZ9kAamztXRtvHU+JJW7LhiCpaCHBytyF3NJLCaE=",
+  "cseszkab01": "HostName=cmgtestIoTHub2.azure-devices.net;DeviceId=cseszkab01;SharedAccessKey=iuYa71bFHhoiCpbyW09XLgdv2ohdw079PHl7M8dZ7Q4="
+}

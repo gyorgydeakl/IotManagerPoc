@@ -1,53 +1,29 @@
-﻿using Microsoft.Azure.Devices.Client;
-using Microsoft.Azure.Devices.Shared;
+﻿using IotManagerDeviceClient;
+using System.Text.Json;
 
-const string deviceConnectionString = "HostName=cmgtestIoTHub2.azure-devices.net;DeviceId=device01;SharedAccessKey=YI5OZ9kAamztXRtvHU+JJW7LhiCpaCHBytyF3NJLCaE=";
-var sampleRunningTime = TimeSpan.FromHours(8);
-var deviceClient = DeviceClient.CreateFromConnectionString(deviceConnectionString, TransportType.Mqtt);
+var connectionStringsJson = await File.ReadAllTextAsync("connectionstrings.json");
+var connectionStrings = JsonSerializer.Deserialize<Dictionary<string, string>>(connectionStringsJson);
+if (connectionStrings == null || connectionStrings.Count == 0)
+{
+    Console.Error.WriteLine("No connection strings found in 'connectionstrings.json'.");
+    return;
+}
 
 Console.WriteLine("Press Control+C to quit the sample.");
-using var cts = new CancellationTokenSource(sampleRunningTime);
-Console.CancelKeyPress += (sender, eventArgs) =>
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
 {
     eventArgs.Cancel = true;
     cts.Cancel();
     Console.WriteLine("Cancellation requested; will exit.");
 };
+var devices = connectionStrings.Select(x => new Device(x.Key, x.Value)).ToList();
 
-await deviceClient.SetDesiredPropertyUpdateCallbackAsync(OnDesiredPropertyChangedAsync, null, cts.Token);
-await deviceClient.UpdateReportedPropertiesAsync(new TwinCollection
-{
-    ["DateTimeLastAppLaunch"] = DateTime.UtcNow
-}, cts.Token);
-
-var initialTwinValue = await deviceClient.GetTwinAsync();
-await OnDesiredPropertyChangedAsync(initialTwinValue.Properties.Desired, null);
+foreach (var d in devices) { await d.InitAsync(cts.Token); }
 
 while (!cts.IsCancellationRequested)
 {
     await Task.Delay(1000);
 }
 
-// unsubscribe a callback for properties.
-await deviceClient.SetDesiredPropertyUpdateCallbackAsync(null, null);
-
-return;
-
-async Task OnDesiredPropertyChangedAsync(TwinCollection desiredProperties, object? userContext)
-{
-    var newReportedProperties = new TwinCollection();
-
-    Console.WriteLine("\tDesired properties requested:");
-    Console.WriteLine($"\t{desiredProperties.ToJson()}");
-
-    foreach (KeyValuePair<string, object> desiredProperty in desiredProperties)
-    {
-        Console.WriteLine($"Setting {desiredProperty.Key} to {desiredProperty.Value}.");
-        newReportedProperties[desiredProperty.Key] = desiredProperty.Value;
-    }
-
-    Console.WriteLine("\tAlso setting current time as reported property");
-    newReportedProperties["DateTimeLastDesiredPropertyChangeReceived"] = DateTime.UtcNow;
-
-    await deviceClient.UpdateReportedPropertiesAsync(newReportedProperties);
-}
+foreach (var d in devices) { await d.OnClose(); }
