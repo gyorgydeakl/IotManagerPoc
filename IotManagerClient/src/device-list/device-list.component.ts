@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms'
-import { DeviceService, RawDevice } from '../deviceservice.service';
+import { BatchJobDto, DeviceService, RawDevice } from '../deviceservice.service';
+import { PickListModule } from 'primeng/picklist';
+import 'jsoneditor/dist/jsoneditor.css';
+import JSONEditor, { JSONEditorOptions } from 'jsoneditor';
 
 export interface Device {
   deviceId: string;
@@ -11,10 +14,19 @@ export interface Device {
   selected?: boolean;
   twin: any;
 }
+export interface DeviceGroup {
+  name: string;
+}
+type TagOperation = 'create' | 'delete';
+interface Tag {
+  operation: TagOperation;
+  key: string;
+  value?: string;
+}
 
 @Component({
   selector: 'app-device-list',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, PickListModule],
   templateUrl: './device-list.component.html',
   styleUrl: './device-list.component.css'
 })
@@ -28,22 +40,45 @@ export class DeviceListComponent implements OnInit {
   currentPage = 1;
   totalPages = 1;
 
-  showModal = false;
+  showEditModal = false;
   editingDevice: Device = { deviceId: '', status: 'Disconnected', statusUpdateDate: new Date(), notes: '', selected: false, twin: {} };
   editingTwinJson = '';
   isNew = false;
 
-  constructor(private deviceService: DeviceService) {}
+  showCommandModal = false;
+  commandText = '';
+  showGroupModal = false;
+  groupStep = 0;
+  groupName = '';
+  availableDevices: Device[] = [];
+  selectedGroupDevices: Device[] = [];
+  messageInterval = '';
+
+  showLoadModal = false;
+  existingGroups: BatchJobDto[] = [];
+  selectedBatchJobId = '';
+
+  currentTag: Tag = { operation: 'create', key: '', value: '' };
+  tags: Tag[] = [];
+
+  currentPropertiesObj: any = {};
+  private jsonEditor!: JSONEditor;
+  @ViewChild('jsonEditorContainer', { static: false })
+  private jsonEditorContainer!: ElementRef;
+
+  constructor(private deviceService: DeviceService) { }
 
   ngOnInit() {
+    this.loadDevices();
+  }
+
+  loadDevices() {
     this.deviceService.getDevices().subscribe((raw: RawDevice[]) => {
       this.devices = raw.map(d => ({
         deviceId: d.deviceId,
         status: d.connectionState === 1 ? 'Connected' : 'Disconnected',
         statusUpdateDate: new Date(d.lastActivityTime),
-        notes: '',
-        selected: false,
-        twin: d.twin
+        notes: '', selected: false, twin: d.twin
       }));
       this.applyFilter();
     });
@@ -60,17 +95,13 @@ export class DeviceListComponent implements OnInit {
   }
 
   get pagedDevices(): Device[] {
-    const start = (this.currentPage - 1) * this.pageSize;
-    return this.filteredDevices.slice(start, start + this.pageSize);
+    return this.filteredDevices.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
   }
 
-  prevPage() {
-    if (this.currentPage > 1) this.currentPage--;
-  }
-  nextPage() {
-    if (this.currentPage < this.totalPages) this.currentPage++;
-  }
+  prevPage() { if (this.currentPage > 1) this.currentPage--; }
+  nextPage() { if (this.currentPage < this.totalPages) this.currentPage++; }
 
+  // Selection
   get allSelected(): boolean {
     return this.pagedDevices.length > 0 && this.pagedDevices.every(d => d.selected);
   }
@@ -86,38 +117,201 @@ export class DeviceListComponent implements OnInit {
     this.isNew = true;
     this.editingDevice = { deviceId: '', status: 'Disconnected', statusUpdateDate: new Date(), notes: '', selected: false, twin: {} };
     this.editingTwinJson = JSON.stringify(this.editingDevice.twin, null, 2);
-    this.showModal = true;
+    this.showEditModal = true;
   }
 
   openEditDialog(device: Device) {
     this.isNew = false;
     this.editingDevice = { ...device };
     this.editingTwinJson = JSON.stringify(this.editingDevice.twin, null, 2);
-    this.showModal = true;
+    this.showEditModal = true;
   }
 
   save() {
-    try {
-      this.editingDevice.twin = JSON.parse(this.editingTwinJson);
-    } catch (e) {
-      alert('Invalid JSON format for twin');
-      return;
-    }
-
-    this.editingDevice.statusUpdateDate = new Date();
     if (this.isNew) {
-      this.devices.push(this.editingDevice);
+      this.deviceService.createDevice(this.editingDevice.deviceId).subscribe(newRaw => {
+        const newDev: Device = {
+          deviceId: newRaw.deviceId,
+          status: newRaw.connectionState === 1 ? 'Connected' : 'Disconnected',
+          statusUpdateDate: new Date(newRaw.lastActivityTime),
+          notes: '',
+          selected: false,
+          twin: newRaw.twin
+        };
+        this.devices.push(newDev);
+        this.applyFilter();
+        this.showEditModal = false;
+      }, err => alert('Error creating device'));
     } else {
-      const idx = this.devices.findIndex(d => d.deviceId === this.editingDevice.deviceId);
-      if (idx > -1) this.devices[idx] = this.editingDevice;
+      try {
+        this.editingDevice.twin = JSON.parse(this.editingTwinJson);
+      } catch {
+        alert('Invalid JSON format for twin');
+        return;
+      }
     }
-
-    // opcionális backend frissítés
-    // this.deviceService.updateDeviceTwin(this.editingDevice.deviceId, this.editingDevice.twin).subscribe();
-
-    this.showModal = false;
-    this.applyFilter();
   }
 
-  closeModal() { this.showModal = false; }
+  executeCommand() {
+    const selectedIds = this.devices.filter(d => d.selected).map(d => d.deviceId);
+    if (!selectedIds.length) { alert('No devices selected'); return; }
+    if (!this.commandText.trim()) { alert('Enter a command'); return; }
+    this.showCommandModal = false;
+    this.commandText = '';
+  }
+
+  closeModals() {
+    this.showEditModal = false;
+    this.showCommandModal = false;
+  }
+  openGroupModal() {
+    this.groupStep = 0;
+    this.groupName = '';
+    this.availableDevices = this.devices.filter(d => !d.selected);
+    this.selectedGroupDevices = [];
+    this.showGroupModal = true;
+  }
+  continueGroup() {
+    if (!this.groupName.trim()) { alert('Enter group name'); return; }
+    this.groupStep = 1;
+  }
+  finishGroup(save: boolean): void {
+    // Gather IDs and tags
+    const deviceIds = this.selectedGroupDevices.map(d => d.deviceId);
+    const tagsToSet = this.tags
+      .filter(t => t.operation === 'create')
+      .map(t => ({ key: t.key, value: t.value! }));
+    const tagsToDelete = this.tags
+      .filter(t => t.operation === 'delete')
+      .map(t => t.key);
+
+    const propsObj = this.jsonEditor ? this.jsonEditor.get() : {};
+    const propertiesToSet = Object.entries(propsObj).map(
+      ([key, value]) => ({ key, value })
+    );
+    const propertiesToDelete: string[] = [];
+
+    if (save) {
+      const createReq = {
+        name: this.groupName,
+        description: '',
+        deviceIds,
+        tagsToSet,
+        tagsToDelete,
+        propertiesToSet,
+        propertiesToDelete
+      };
+
+      this.deviceService
+        .createBatchJob(createReq)
+        .subscribe({
+          next: (job) => {
+            this.deviceService
+              .executeBatchJob(job.id)
+              .subscribe({
+                next: () => this.resetGroupModal(),
+                error: (err) => alert('Exec failed: ' + err.message),
+              });
+          },
+          error: (err) => alert('Create job failed: ' + err.message),
+        });
+    } else {
+      const singleReq = { deviceIds, tagsToSet, tagsToDelete, propertiesToSet,propertiesToDelete };
+      this.deviceService
+        .executeSingleTimeBatchJob(singleReq)
+        .subscribe({
+          next: () => this.resetGroupModal(),
+          error: (err) => alert('Exec failed: ' + err.message),
+        });
+    }
+  }
+
+  private resetGroupModal(): void {
+    this.showGroupModal = false;
+    this.groupStep = 0;
+    this.groupName = '';
+    this.selectedGroupDevices = [];
+    this.currentTag = { operation: 'create', key: '', value: '' };
+    this.tags = [];
+    this.messageInterval = '';
+    this.currentPropertiesObj = {};
+    if (this.jsonEditor) {
+      this.jsonEditor.destroy();
+      // @ts-ignore
+      this.jsonEditor = undefined;
+    }
+  }
+
+  closeGroupModal() { this.showGroupModal = false; }
+  openLoadModal() {
+    this.deviceService.getBatchJobsList()
+      .subscribe(jobs => this.existingGroups = jobs);
+    this.showLoadModal = true;
+  }
+
+  confirmLoad() {
+    if (!this.selectedBatchJobId) { alert('Select a group'); return; }
+    const job = this.existingGroups.find(j => j.id === this.selectedBatchJobId)!;
+    this.groupName = job.name ?? '';
+
+    const ids = new Set(job.deviceIds || []);
+    this.selectedGroupDevices = this.devices.filter(d => ids.has(d.deviceId));
+    this.availableDevices = this.devices.filter(d => !ids.has(d.deviceId));
+
+    this.tags = [];
+    (job.tagsToSet || []).forEach(t =>
+      this.tags.push({ operation: 'create', key: t.key, value: t.value })
+    );
+    (job.tagsToDelete || []).forEach(k =>
+      this.tags.push({ operation: 'delete', key: k })
+    );
+
+    this.currentPropertiesObj = {};
+    (job.propertiesToSet || []).forEach(p => {
+      this.currentPropertiesObj[p.key] = p.value;
+    });
+
+    this.showLoadModal = false;
+    this.showGroupModal = true;
+    this.groupStep = 0;
+  }
+  addTag(): void {
+    const op = this.currentTag.operation;
+    if (!this.currentTag.key || (op === 'create' && !this.currentTag.value)) {
+      return;
+    }
+    this.tags.push({
+      operation: op,
+      key: this.currentTag.key,
+      value: op === 'create' ? this.currentTag.value : undefined
+    });
+    this.currentTag = { operation: 'create', key: '', value: '' };
+  }
+  updateOperation(value: string): void {
+    this.currentTag.operation = value as TagOperation;
+  }
+  removeTag(index: number): void {
+    this.tags.splice(index, 1);
+  }
+
+  closeWizardModal() {
+    this.resetGroupModal();
+  }
+  ngAfterViewChecked() {
+    if (this.groupStep === 1 && this.jsonEditorContainer && !this.jsonEditor) {
+      this.initJsonEditor();
+    }
+  }
+  private initJsonEditor(): void {
+    const options: JSONEditorOptions = {
+      mode: 'code',
+      modes: ['code', 'tree'],
+      mainMenuBar: true
+    };
+    this.jsonEditor = new JSONEditor(
+      this.jsonEditorContainer.nativeElement,
+      options
+    );
+    this.jsonEditor.set(this.currentPropertiesObj);
+  }
 }

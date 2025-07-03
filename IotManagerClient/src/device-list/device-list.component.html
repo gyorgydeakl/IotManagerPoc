@@ -1,65 +1,210 @@
 <div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <button class="btn btn-primary" (click)="onAddDevice()">Add Device</button>
-    <div>
-      <label for="statusFilter" class="form-label me-2">Status:</label>
-      <select id="statusFilter" class="form-select d-inline-block w-auto" [(ngModel)]="statusFilter" (change)="applyFilter()">
-        <option value="">All</option>
-        <option value="Connected">Connected</option>
-        <option value="Disconnected">Disconnected</option>
-      </select>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <button class="btn btn-primary me-2" (click)="onAddDevice()">Add Device Identity</button>
+                <button class="btn btn-secondary" (click)="openGroupModal()">Open BatchJob Wizard</button>
+            </div>
+            <div>
+                <label for="statusFilter" class="form-label me-2">Status:</label>
+                <select id="statusFilter" class="form-select d-inline-block w-auto" [(ngModel)]="statusFilter"
+                    (change)="applyFilter()">
+                    <option value="">All</option>
+                    <option value="Connected">Connected</option>
+                    <option value="Disconnected">Disconnected</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Device ID</th>
+                        <th>Status</th>
+                        <th>Updated At</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let device of pagedDevices">
+                        <td>{{device.deviceId}}</td>
+                        <td>{{device.status}}</td>
+                        <td>{{device.statusUpdateDate | date:'short'}}</td>
+                        <td><button class="btn btn-sm btn-outline-secondary" (click)="openEditDialog(device)"><i
+                                    class="bi bi-eye"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <nav aria-label="Page navigation" class="mt-2">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" [class.disabled]="currentPage===1"><a class="page-link" href="#"
+                        (click)="prevPage(); $event.preventDefault()">Previous</a></li>
+                <li class="page-item disabled"><span class="page-link">{{currentPage}} / {{totalPages}}</span></li>
+                <li class="page-item" [class.disabled]="currentPage===totalPages"><a class="page-link" href="#"
+                        (click)="nextPage(); $event.preventDefault()">Next</a></li>
+            </ul>
+        </nav>
+        <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showEditModal}"
+            style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{isNew ? 'Add Device' : 'Edit Device'}}</h5>
+                        <button type="button" class="btn-close" (click)="closeModals()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3"><label class="form-label">Device ID</label><input class="form-control"
+                                disabled [(ngModel)]="editingDevice.deviceId" [readonly]="!isNew"></div>
+                        <div *ngIf="!isNew" class="mb-3"><label class="form-label">Status</label><select disabled
+                                class="form-select" [(ngModel)]="editingDevice.status">
+                                <option value="Connected">Connected</option>
+                                <option value="Disconnected">Disconnected</option>
+                            </select></div>
+                        <div *ngIf="!isNew" class="mb-3"><label class="form-label">Notes</label><textarea disabled
+                                class="form-control" rows="3" [(ngModel)]="editingDevice.notes"></textarea></div>
+                        <div *ngIf="!isNew" class="mb-3"><label class="form-label">Twin JSON</label><textarea disabled
+                                class="form-control" rows="5" [(ngModel)]="editingTwinJson"></textarea></div>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-secondary"
+                            (click)="closeModals()">Cancel</button><button class="btn btn-primary"
+                            (click)="save()">{{isNew
+                            ? 'Create' : 'Save'}}</button></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showGroupModal}"
+            style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+                style="max-height:100vh; max-width:100vw;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Set up a batch job and execute it!</h5>
+                        <button type="button" class="btn-close" (click)="closeWizardModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div *ngIf="groupStep===0">
+                            <div class="mb-3">
+                                <label class="form-label">BatchJob Name</label>
+                                <input class="form-control" [(ngModel)]="groupName">
+                            </div>
+                            <p-pickList [source]="availableDevices" [target]="selectedGroupDevices"
+                                sourceHeader="Available" targetHeader="Selected" [filterBy]="'deviceId,status'"
+                                showSourceFilter="true">
+                                <ng-template let-device pTemplate="item">
+                                    <div>{{device.deviceId}} ({{device.status}})</div>
+                                </ng-template>
+                            </p-pickList>
+                        </div>
+                        <div *ngIf="groupStep===1" class="row">
+                            <div class="row gx-3">
+                                <div class="col-4">
+                                    <h6>Selected Devices</h6>
+                                    <ul class="list-group">
+                                        <li class="list-group-item" *ngFor="let dev of selectedGroupDevices">
+                                            {{dev.deviceId}}</li>
+                                    </ul>
+                                </div>
+                                <div class="col-4">
+                                    <h6>Tags</h6>
+                                    <div class="d-flex align-items-center mb-2">
+
+                                        <select class="form-select form-select-sm me-2" style="width: 150px"
+                                            [ngModel]="currentTag.operation" (ngModelChange)="updateOperation($event)">
+                                            <option value="create">Create Tag</option>
+                                            <option value="delete">Delete Tag</option>
+                                        </select>
+
+                                        <input type="text" class="form-control form-control-sm me-2" placeholder="Key"
+                                            style="width: 150px;" [(ngModel)]="currentTag.key" />
+
+                                        <input *ngIf="currentTag.operation === 'create'" type="text"
+                                            class="form-control form-control-sm me-2" placeholder="Value"
+                                            style="width: 150px;" [(ngModel)]="currentTag.value" />
+
+                                        <button class="btn btn-success btn-sm" (click)="addTag()"
+                                            [disabled]="!currentTag.key || (currentTag.operation === 'create' && !currentTag.value)">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                    </div>
+                                    <ul class="list-group mb-3">
+                                        <li *ngFor="let tag of tags; let i = index"
+                                            class="list-group-item py-1 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ tag.operation | titlecase }}</strong> — {{ tag.key }}
+                                                <span *ngIf="tag.operation === 'create'">
+                                                    : {{ tag.value }}
+                                                </span>
+                                            </div>
+                                            <!-- Remove button -->
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                (click)="removeTag(i)" aria-label="Remove tag">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-4">
+                                    <h6>Desired properties (JSON)</h6>
+                                    <div #jsonEditorContainer
+                                        style="height: 300px; border: 1px solid #ced4da; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary me-auto" (click)="openLoadModal()"
+                            *ngIf="groupStep===0">Load</button>
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-outline-secondary me-auto"
+                            (click)="groupStep = 0">
+                            Back
+                        </button>
+
+                        <!-- STEP 1: Execute and Save -->
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-primary" (click)="finishGroup(true)">
+                            Execute and Save
+                        </button>
+
+                        <!-- STEP 1: Execute without Saving -->
+                        <button *ngIf="groupStep===1" type="button" class="btn btn-secondary"
+                            (click)="finishGroup(false)">
+                            Execute without Saving
+                        </button>
+
+                        <!-- STEP 0: single Continue button -->
+                        <button *ngIf="groupStep===0" type="button" class="btn btn-primary" (click)="continueGroup()">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showLoadModal}"
+            style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Load Device Group</h5>
+                        <button type="button" class="btn-close" (click)="showLoadModal=false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Select Batch Job</label>
+                            <select class="form-select" [(ngModel)]="selectedBatchJobId">
+                                <option *ngFor="let job of existingGroups" [value]="job.id">
+                                    {{ job.name || job.id }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" (click)="confirmLoad()">
+                            Load
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th scope="col">
-            <input type="checkbox" [checked]="allSelected" [indeterminate]="someSelected" (change)="toggleAll($event)">
-          </th>
-          <th scope="col">Device ID</th><th scope="col">Status</th><th scope="col">Updated At</th><th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let device of pagedDevices">
-          <td><input type="checkbox" [(ngModel)]="device.selected"></td>
-          <td>{{device.deviceId}}</td>
-          <td>{{device.status}}</td>
-          <td>{{device.statusUpdateDate | date:'short'}}</td>
-          <td><button class="btn btn-sm btn-outline-secondary" (click)="openEditDialog(device)"><i class="bi bi-pencil"></i></button></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <nav aria-label="Page navigation" class="mt-2">
-    <ul class="pagination justify-content-center">
-      <li class="page-item" [class.disabled]="currentPage===1">
-        <a class="page-link" href="#" (click)="prevPage(); $event.preventDefault()">Previous</a>
-      </li>
-      <li class="page-item disabled"><span class="page-link">{{currentPage}} / {{totalPages}}</span></li>
-      <li class="page-item" [class.disabled]="currentPage===totalPages">
-        <a class="page-link" href="#" (click)="nextPage(); $event.preventDefault()">Next</a>
-      </li>
-    </ul>
-  </nav>
-  <div class="modal" tabindex="-1" [ngClass]="{'show d-block': showModal}" style="background: rgba(0,0,0,0.5);">
-    <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">{{isNew ? 'Add Device' : 'Edit Device'}}</h5>
-          <button type="button" class="btn-close" (click)="closeModal()"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3"><label class="form-label">Device ID</label><input class="form-control" [(ngModel)]="editingDevice.deviceId"></div>
-          <div class="mb-3"><label class="form-label">Status</label><select class="form-select" [(ngModel)]="editingDevice.status">
-              <option value="Connected">Connected</option><option value="Disconnected">Disconnected</option>
-            </select></div>
-          <div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" rows="3" [(ngModel)]="editingDevice.notes"></textarea></div>
-          <div class="mb-3"><label class="form-label">Twin JSON</label><textarea class="form-control" rows="5" [(ngModel)]="editingTwinJson"></textarea></div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
-          <button class="btn btn-primary" (click)="save()">Save</button>
-        </div>
-    </div></div>
-  </div>
 </div>
